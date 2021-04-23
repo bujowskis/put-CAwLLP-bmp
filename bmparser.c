@@ -131,23 +131,23 @@ Bmp *bmpReadFile(char *path) {
 
     // Print the content of headers
     fprintf(stdout, "BITMAPFILEHEADER:\n");
-    fprintf(stdout, " bfType:\t\t\t%d %d (BM)\n", 'B', 'M'); // I could split uint16 into two and pass it, but at this point I'm 100% sure that's the case
-    fprintf(stdout, " bfSize:\t\t\t%u\n", bmp->header->bfSize);
-    fprintf(stdout, " bfReserved1:\t\t\t%u\n", bmp->header->bfReserved1);
-    fprintf(stdout, " bfReserved2:\t\t\t%u\n", bmp->header->bfReserved2);
-    fprintf(stdout, " bfOffBits:\t\t\t%u\n", bmp->header->bfOffBits);
+    fprintf(stdout, " bfType:\t\t%d %d (BM)\n", 'B', 'M'); // I could split uint16 into two and pass it, but at this point I'm 100% sure that's the case
+    fprintf(stdout, " bfSize:\t\t%u\n", bmp->header->bfSize);
+    fprintf(stdout, " bfReserved1:\t\t%u\n", bmp->header->bfReserved1);
+    fprintf(stdout, " bfReserved2:\t\t%u\n", bmp->header->bfReserved2);
+    fprintf(stdout, " bfOffBits:\t\t%u\n", bmp->header->bfOffBits);
     fprintf(stdout, "BITMAPINFOHEADER:\n");
-    fprintf(stdout, " biSize:\t\t\t%u\n", bmp->infoHeader->biSize);
-    fprintf(stdout, " biWidth:\t\t\t%d\n", bmp->infoHeader->biWidth);
-    fprintf(stdout, " biHeight:\t\t\t%d\n", bmp->infoHeader->biHeight);
-    fprintf(stdout, " biPlanes:\t\t\t%u\n", bmp->infoHeader->biPlanes);
-    fprintf(stdout, " biBitCount:\t\t\t%u\n", bmp->infoHeader->biBitCount);
-    fprintf(stdout, " biCompression:\t\t\t%u\n", bmp->infoHeader->biCompression);
-    fprintf(stdout, " biSizeImage:\t\t\t%u\n", bmp->infoHeader->biSizeImage);
-    fprintf(stdout, " biXPelsPerMeter:\t\t%d\n", bmp->infoHeader->biXPelsPerMeter);
-    fprintf(stdout, " biYPelsPerMeter:\t\t%d\n", bmp->infoHeader->biYPelsPerMeter);
-    fprintf(stdout, " biClrUsed:\t\t\t%u\n", bmp->infoHeader->biClrUsed);
-    fprintf(stdout, " biClrImportant:\t\t%u\n", bmp->infoHeader->biClrImportant);
+    fprintf(stdout, " biSize:\t\t%u\n", bmp->infoHeader->biSize);
+    fprintf(stdout, " biWidth:\t\t%d\n", bmp->infoHeader->biWidth);
+    fprintf(stdout, " biHeight:\t\t%d\n", bmp->infoHeader->biHeight);
+    fprintf(stdout, " biPlanes:\t\t%u\n", bmp->infoHeader->biPlanes);
+    fprintf(stdout, " biBitCount:\t\t%u\n", bmp->infoHeader->biBitCount);
+    fprintf(stdout, " biCompression:\t\t%u\n", bmp->infoHeader->biCompression);
+    fprintf(stdout, " biSizeImage:\t\t%u\n", bmp->infoHeader->biSizeImage);
+    fprintf(stdout, " biXPelsPerMeter:\t%d\n", bmp->infoHeader->biXPelsPerMeter);
+    fprintf(stdout, " biYPelsPerMeter:\t%d\n", bmp->infoHeader->biYPelsPerMeter);
+    fprintf(stdout, " biClrUsed:\t\t%u\n", bmp->infoHeader->biClrUsed);
+    fprintf(stdout, " biClrImportant:\t%u\n", bmp->infoHeader->biClrImportant);
 
     // TODO(evaluate supported)
 
