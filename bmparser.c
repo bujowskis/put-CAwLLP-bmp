@@ -81,11 +81,13 @@ Bmp *bmpReadFile(char *path) {
     byte1 = fileReadUi8(file);
     if (byte1 != 'B') {
         ERROR("Invalid file type\n");
+        fclose(file);
         return NULL;
     }
     byte1 = fileReadUi8(file);
     if (byte1 != 'M') {
         ERROR("Invalid file type\n");
+        fclose(file);
         return NULL;
     }
 
@@ -94,6 +96,7 @@ Bmp *bmpReadFile(char *path) {
     Bmp *bmp = bmpCreate();
     if ((bmp = malloc(sizeof *bmp)) == NULL) {
         ERROR("malloc\n");
+        fclose(file);
         return NULL;
     }
     bmp->isSupported = true; // Initially set to true
@@ -102,6 +105,7 @@ Bmp *bmpReadFile(char *path) {
     if ((bmp->header = malloc(sizeof *bmp->header)) == NULL) {
         ERROR("malloc\n");
         bmpDestroy(bmp);
+        fclose(file);
         return NULL;
     }
     bmp->header->bfType = fileReadUi16(file);
@@ -113,6 +117,7 @@ Bmp *bmpReadFile(char *path) {
     if ((bmp->infoHeader = malloc(sizeof *bmp->infoHeader)) == NULL) {
         ERROR("malloc\n");
         bmpDestroy(bmp);
+        fclose(file);
         return NULL;
     }
     bmp->infoHeader->biSize = fileReadUi32(file);
@@ -149,9 +154,41 @@ Bmp *bmpReadFile(char *path) {
     fprintf(stdout, " biClrUsed:\t\t%u\n", bmp->infoHeader->biClrUsed);
     fprintf(stdout, " biClrImportant:\t%u\n", bmp->infoHeader->biClrImportant);
 
-    // TODO(evaluate supported)
+    if (!bmp->isSupported) {
+        fprintf(stdout, "Histogram calculation is supported only for 24-bit, uncompressed BMP files\n");
+    } else {
+        // Allocate memory for the rows
+        if ((bmp->pixelData = malloc((size_t) bmp->infoHeader->biHeight * sizeof **bmp->pixelData)) == NULL) {
+            ERROR("malloc\n");
+            bmpDestroy(bmp);
+            fclose(file);
+            return NULL;
+        }
+        for (int32 i = 0; i < bmp->infoHeader->biHeight; i++) {
+            // Allocate memory for the columns
+            if ((bmp->pixelData[i] = malloc((size_t) (bmp->infoHeader->biWidth + 31) * 4 / 32)) == NULL) {
+                ERROR("malloc\n");
+                bmpDestroy(bmp);
+                fclose(file);
+                return NULL;
+            }
+            for (int32 j = 0; j < (int32) (bmp->infoHeader->biWidth + 31) * 4 / 32; j++) {
+                // Allocate memory for the pixels
+                if ((bmp->pixelData[i][j] = malloc(sizeof(Pixel))) == NULL) {
+                    ERROR("malloc\n");
+                    bmpDestroy(bmp);
+                    fclose(file);
+                    return NULL;
+                }
+            }
+        }
+
+        // Read and save the pixels; count components for the histogram
+        // TODO
+    }
 
     fclose(file);
+    return bmp;
 }
 
 void bmpCreateGreyscale(const Bmp *bmpIn) {
@@ -162,7 +199,13 @@ void bmpDestroy(Bmp *bmp) {
     if (!bmp)
         return;
     if (!bmp->pixelData) {
-        // TODO
+        for (int32 i = 0; i < bmp->infoHeader->biHeight; i++) {
+            for (int32 j = 0; j < (int32) (bmp->infoHeader->biWidth + 31) * 4 / 32; j++) {
+                free(bmp->pixelData[i][j]);
+            }
+            free(bmp->pixelData[i]);
+        }
+        free(bmp->pixelData);
     }
     if (!bmp->infoHeader)
         free(bmp->infoHeader);

@@ -36,7 +36,7 @@ struct Bmp {
     BmpHeader *header;
     BmpInfoHeader *infoHeader;
     /* Array of pixel data */
-    Pixel **pixelData;
+    Pixel ***pixelData;
     /* Flag whether type is supported (no compression, bitCount = 24) */
     bool isSupported;
 };

@@ -20,5 +20,6 @@ int main(int argc, char *argv[])
 
     Bmp *bmpIn = bmpReadFile(argv[1]);
 
+    bmpDestroy(bmpIn);
 	return 0;
 }
