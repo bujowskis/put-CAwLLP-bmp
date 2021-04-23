@@ -18,8 +18,7 @@ int main(int argc, char *argv[])
     // one command line parameter - only read
     // two --||-- - read and create grayscale
 
-    Bmp *bmpIn = bmpCreate();
-    bmpIn = bmpReadFile(argv[1]);
+    Bmp *bmpIn = bmpReadFile(argv[1]);
 
 	return 0;
 }

@@ -71,7 +71,7 @@ struct Pixel {
 
 /** FUNCTIONS **/
 
-    // Utility Functions for simplified reading of the binary file
+    // Utility Functions for simplified operating on the binary file
 /* Reads and returns a single uint8 from the file */
 uint8 fileReadUi8(FILE *file);
 
@@ -87,6 +87,9 @@ int32 fileReadInt32(FILE *file);
     // BMP-reading-related functions
 /* Creates a new instance of Bmp structure */
 Bmp *bmpCreate();
+
+/* Creates greyscale bmp out of the input bmp */
+void bmpCreateGreyscale(const Bmp *bmpIn);
 
 /*
  * Reads given bmp file and stores it in struct Bmp
