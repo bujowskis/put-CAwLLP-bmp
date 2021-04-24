@@ -86,6 +86,18 @@ uint32 fileReadUi32(FILE *file);
 /* Reads and returns a single int32 from the file */
 int32 fileReadInt32(FILE *file);
 
+/* Writes a single uint8 to the file in binary mode */
+void fileWriteUi8(FILE *file, uint8 input);
+
+/* Writes a single uint16 to the file in binary mode */
+void fileWriteUi16(FILE *file, uint16 input);
+
+/* Writes a single uint32 to the file in binary mode */
+void fileWriteUi32(FILE *file, uint32 input);
+
+/* Writes a single int32 to the file in binary mode */
+void fileWriteInt32(FILE *file, int32 input);
+
     // BMP-reading-related functions
 /* Creates a new instance of Bmp structure */
 Bmp *bmpCreate();

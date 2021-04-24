@@ -6,7 +6,7 @@
 #include <float.h>
 #include "bmparser.h"
 
-// Simplified reading
+// Simplified reading/writing
 
 uint8 fileReadUi8(FILE *file) {
    if (!file) {
@@ -58,6 +58,50 @@ int32 fileReadInt32(FILE *file) {
         exit(2);
     }
     return ret;
+}
+
+void fileWriteUi8(FILE *file, uint8 input) {
+    if (!file) {
+        ERROR("no file specified\n");
+        exit(1);
+    }
+    if (fwrite(&input, sizeof input, 1, file) != 1) {
+        ERROR("did not write uint8 to the file\n");
+        exit(2);
+    }
+}
+
+void fileWriteUi16(FILE *file, uint16 input) {
+    if (!file) {
+        ERROR("no file specified\n");
+        exit(1);
+    }
+    if (fwrite(&input, sizeof input, 1, file) != 1) {
+        ERROR("did not write uint16 to the file\n");
+        exit(2);
+    }
+}
+
+void fileWriteUi32(FILE *file, uint32 input) {
+    if (!file) {
+        ERROR("no file specified\n");
+        exit(1);
+    }
+    if (fwrite(&input, sizeof input, 1, file) != 1) {
+        ERROR("did not write uint32 to the file\n");
+        exit(2);
+    }
+}
+
+void fileWriteInt32(FILE *file, int32 input) {
+    if (!file) {
+        ERROR("no file specified\n");
+        exit(1);
+    }
+    if (fwrite(&input, sizeof input, 1, file) != 1) {
+        ERROR("did not write int32 to the file\n");
+        exit(2);
+    }
 }
 
 // BMP-related
@@ -166,9 +210,9 @@ Bmp *bmpReadFile(char *path) {
             fclose(file);
             return NULL;
         }
+        // Allocate memory for the columns
         for (int32 i = 0; i < bmp->infoHeader->biHeight; i++) {
-            // Allocate memory for the columns
-            if ((bmp->pixelData[i] = malloc((bmp->infoHeader->biWidth + 1) * sizeof(Pixel)/* (size_t) ceil(floor((24 * bmp->infoHeader->biWidth + 31) / 32) * 4) / 3) */)) == NULL) { // + 1 to account for padding
+            if ((bmp->pixelData[i] = malloc((bmp->infoHeader->biWidth + 1) * sizeof(Pixel))) == NULL) { // + 1 to account for padding
                 ERROR("malloc\n");
                 bmpDestroy(bmp);
                 fclose(file);
@@ -416,9 +460,10 @@ Bmp *bmpReadFile(char *path) {
 
         // Calculate values for the histogram
         uint32 pixelsTotal = (uint32) bmp->infoHeader->biWidth * bmp->infoHeader->biHeight;
-        printf("pixelsTotal = %u\n", pixelsTotal);
+        printf("pixelsTotal = %u\n", pixelsTotal); // TODO (remove this testing)
         double redHistogram[16], greenHistogram[16], blueHistogram[16];
         for (short i = 0; i < 16; i++) {
+            // TODO (remove this testing)
             totalRed += redArray[i];
             totalGreen += greenArray[i];
             totalBlue += blueArray[i];
@@ -427,6 +472,7 @@ Bmp *bmpReadFile(char *path) {
             greenHistogram[i] = (double) 100 * greenArray[i] / pixelsTotal;
             blueHistogram[i] = (double) 100 * blueArray[i] / pixelsTotal;
         }
+        // TODO (remove this testing)
         printf("totalRed = %u\n", totalRed);
         printf("totalGreen = %u\n", totalGreen);
         printf("totalBlue = %u\n", totalBlue);
@@ -464,7 +510,22 @@ Bmp *bmpReadFile(char *path) {
 }
 
 void bmpCreateGreyscale(const Bmp *bmpIn) {
-    // TODO
+    if (!bmpIn) {
+        ERROR("no bmpIn\n");
+        return;
+    }
+    if (!bmpIn->isSupported) {
+        fprintf(stdout, "Creating greyscale is supported only for 24-bit, uncompressed BMP files\n");
+        return;
+    }
+
+    FILE *fileOut;
+    if ((fileOut = fopen("greyscale-out.bmp", "wb")) == NULL) {
+        ERROR("did not open fileOut\n");
+        return;
+    }
+
+
 }
 
 void bmpDestroy(Bmp *bmp) {

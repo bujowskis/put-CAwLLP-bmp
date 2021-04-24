@@ -17,10 +17,13 @@ int main(int argc, char *argv[])
         ERROR("At max 2 arguments required - file path and path to out, greyscale file\n");
         return 2;
     }
-    // one command line parameter - only read
-    // two --||-- - read and create grayscale
 
+    // One command line parameter - only read and display info
     Bmp *bmpIn = bmpReadFile(argv[1]);
+    if (argc == 3) {
+        // Two command line parameters - if possible, create and export greyscale
+        bmpCreateGreyscale(bmpIn);
+    }
 
     bmpDestroy(bmpIn);
 	return 0;
