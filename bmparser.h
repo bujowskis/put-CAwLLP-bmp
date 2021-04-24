@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <math.h>
+#include <float.h>
 
 #define UINT_8 1
 #define UINT_16 2

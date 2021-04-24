@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <math.h>
+#include <float.h>
 #include "bmparser.h"
 
 // Driver program for the .bmp file parser
