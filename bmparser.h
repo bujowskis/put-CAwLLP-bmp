@@ -37,7 +37,7 @@ typedef uint8_t uint8;      // 0-255 for a single color component of pixel
 struct Bmp {
     BmpHeader *header;
     BmpInfoHeader *infoHeader;
-    /* Array of pixel data */
+    /* Matrix of pixel data */
     Pixel **pixelData;
     /* Flag whether type is supported (no compression, bitCount = 24) */
     bool isSupported;
@@ -103,13 +103,16 @@ void fileWriteInt32(FILE *file, int32 input);
 Bmp *bmpCreate();
 
 /* Creates greyscale bmp out of the input bmp */
-void bmpCreateGreyscale(const Bmp *bmpIn);
+void bmpCreateGreyscale(const Bmp *bmpIn, const char *path);
 
 /*
  * Reads given bmp file and stores it in struct Bmp
  * Returns NULL on failure
  */
 Bmp *bmpReadFile(char *path);
+
+/* Encodes given text in given bmp, gives the option to decrypt the message */
+void bmpEncode(Bmp *bmp, const char *text);
 
 /* Frees all the memory taken up by the struct Bmp */
 void bmpDestroy(Bmp *bmp);

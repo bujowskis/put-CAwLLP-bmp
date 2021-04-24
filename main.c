@@ -22,7 +22,7 @@ int main(int argc, char *argv[])
     Bmp *bmpIn = bmpReadFile(argv[1]);
     if (argc == 3) {
         // Two command line parameters - if possible, create and export greyscale
-        bmpCreateGreyscale(bmpIn);
+        bmpCreateGreyscale(bmpIn, argv[2]);
     }
 
     bmpDestroy(bmpIn);

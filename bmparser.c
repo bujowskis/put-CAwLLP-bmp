@@ -290,7 +290,6 @@ Bmp *bmpReadFile(char *path) {
                         fclose(file);
                         return NULL;
                 }
-                column++;
                 // Green
                 bmp->pixelData[row][column].green = fileReadUi8(file);
                 switch (bmp->pixelData[row][column].green) {
@@ -405,6 +404,7 @@ Bmp *bmpReadFile(char *path) {
                         fclose(file);
                         return NULL;
                 }
+                column++;
             }
             // Account for padding, which is stored as consecutive, insignificant pixel components
             switch ((size_t) (ceil(floor((24 * bmp->infoHeader->biWidth + 31) / 32) * 4)) - (bmp->infoHeader->biWidth * 3)) {
@@ -413,18 +413,18 @@ Bmp *bmpReadFile(char *path) {
                     break;
                 case 1:
                     // 1 byte of padding
-                    bmp->pixelData[row][column].red = fileReadUi8(file);
+                    bmp->pixelData[row][column].blue = fileReadUi8(file);
                     break;
                 case 2:
                     // 2 bytes of padding
-                    bmp->pixelData[row][column].red = fileReadUi8(file);
+                    bmp->pixelData[row][column].blue = fileReadUi8(file);
                     bmp->pixelData[row][column].green = fileReadUi8(file);
                     break;
                 case 3:
                     // 3 bytes of padding
-                    bmp->pixelData[row][column].red = fileReadUi8(file);
-                    bmp->pixelData[row][column].green = fileReadUi8(file);
                     bmp->pixelData[row][column].blue = fileReadUi8(file);
+                    bmp->pixelData[row][column].green = fileReadUi8(file);
+                    bmp->pixelData[row][column].red = fileReadUi8(file);
                     break;
                 default:
                     ERROR("improper padding\n");
@@ -434,48 +434,14 @@ Bmp *bmpReadFile(char *path) {
             }
         }
 
-        // TODO (remove this testing)
-        switch ((size_t) (ceil(floor((24 * bmp->infoHeader->biWidth + 31) / 32) * 4)) - (bmp->infoHeader->biWidth * 3)) {
-            case 0:
-                printf("(no padding)\n");
-                break;
-            case 1:
-                printf("(1 byte padding)\n");
-                break;
-            case 2:
-                printf("(2 byte padding)\n");
-                break;
-            case 3:
-                printf("(3 byte padding)\n");
-                break;
-            default:
-                ERROR("improper padding\n");
-                bmpDestroy(bmp);
-                fclose(file);
-                return NULL;
-        }
-        uint32 totalRed = 0;
-        uint32 totalGreen = 0;
-        uint32 totalBlue = 0;
-
         // Calculate values for the histogram
         uint32 pixelsTotal = (uint32) bmp->infoHeader->biWidth * bmp->infoHeader->biHeight;
-        printf("pixelsTotal = %u\n", pixelsTotal); // TODO (remove this testing)
         double redHistogram[16], greenHistogram[16], blueHistogram[16];
         for (short i = 0; i < 16; i++) {
-            // TODO (remove this testing)
-            totalRed += redArray[i];
-            totalGreen += greenArray[i];
-            totalBlue += blueArray[i];
-
             redHistogram[i] = (double) 100 * redArray[i] / pixelsTotal;
             greenHistogram[i] = (double) 100 * greenArray[i] / pixelsTotal;
             blueHistogram[i] = (double) 100 * blueArray[i] / pixelsTotal;
         }
-        // TODO (remove this testing)
-        printf("totalRed = %u\n", totalRed);
-        printf("totalGreen = %u\n", totalGreen);
-        printf("totalBlue = %u\n", totalBlue);
 
         // Display histogram
         uint8 leftRange, rightRange;
@@ -509,7 +475,7 @@ Bmp *bmpReadFile(char *path) {
     return bmp;
 }
 
-void bmpCreateGreyscale(const Bmp *bmpIn) {
+void bmpCreateGreyscale(const Bmp *bmpIn, const char *path) {
     if (!bmpIn) {
         ERROR("no bmpIn\n");
         return;
@@ -518,13 +484,80 @@ void bmpCreateGreyscale(const Bmp *bmpIn) {
         fprintf(stdout, "Creating greyscale is supported only for 24-bit, uncompressed BMP files\n");
         return;
     }
-
-    FILE *fileOut;
-    if ((fileOut = fopen("greyscale-out.bmp", "wb")) == NULL) {
+    FILE *file;
+    if ((file = fopen(path, "wb")) == NULL) {
         ERROR("did not open fileOut\n");
         return;
     }
 
+    // Write the content of the header
+    fileWriteUi16(file, bmpIn->header->bfType);
+    fileWriteUi32(file, bmpIn->header->bfSize);
+    fileWriteUi16(file, bmpIn->header->bfReserved1);
+    fileWriteUi16(file, bmpIn->header->bfReserved2);
+    fileWriteUi32(file, bmpIn->header->bfOffBits);
+
+    // Write the content of the infoHeader
+    fileWriteUi32(file, bmpIn->infoHeader->biSize);
+    fileWriteInt32(file, bmpIn->infoHeader->biWidth);
+    fileWriteInt32(file, bmpIn->infoHeader->biHeight);
+    fileWriteUi16(file, bmpIn->infoHeader->biPlanes);
+    fileWriteUi16(file, bmpIn->infoHeader->biBitCount);
+    fileWriteUi32(file, bmpIn->infoHeader->biCompression);
+    fileWriteUi32(file, bmpIn->infoHeader->biSizeImage);
+    fileWriteInt32(file, bmpIn->infoHeader->biXPelsPerMeter);
+    fileWriteInt32(file, bmpIn->infoHeader->biYPelsPerMeter);
+    fileWriteUi32(file, bmpIn->infoHeader->biClrUsed);
+    fileWriteUi32(file, bmpIn->infoHeader->biClrImportant);
+
+    // Write the content of the pixelData
+    fseek(file, bmpIn->header->bfOffBits, SEEK_SET); // Move to the first pixel position
+    short paddingBytes = (short) ceil(floor((24 * bmpIn->infoHeader->biWidth + 31) / 32) * 4) - (bmpIn->infoHeader->biWidth * 3);
+    uint16 greyValue;
+    for (int32 row = 0; row < bmpIn->infoHeader->biHeight; row++) {
+        int32 column = 0;
+        // Write all pixels
+        while (column < bmpIn->infoHeader->biWidth) {
+            // Calculate greyscale value
+            greyValue = (uint16) (bmpIn->pixelData[row][column].blue + bmpIn->pixelData[row][column].green + bmpIn->pixelData[row][column].red) / 3;
+            // Write it as all blue, green and red color components
+            fileWriteUi8(file, greyValue);
+            fileWriteUi8(file, greyValue);
+            fileWriteUi8(file, greyValue);
+            column++;
+        }
+        // Account for padding
+        switch (paddingBytes) {
+            case 0:
+                // No padding
+                break;
+            case 1:
+                // 1 byte of padding
+                fileWriteUi8(file, bmpIn->pixelData[row][column].blue);
+                break;
+            case 2:
+                // 2 bytes of padding
+                fileWriteUi8(file, bmpIn->pixelData[row][column].blue);
+                fileWriteUi8(file, bmpIn->pixelData[row][column].green);
+                break;
+            case 3:
+                // 3 bytes of padding
+                fileWriteUi8(file, bmpIn->pixelData[row][column].blue);
+                fileWriteUi8(file, bmpIn->pixelData[row][column].green);
+                fileWriteUi8(file, bmpIn->pixelData[row][column].red);
+                break;
+            default:
+                ERROR("improper padding\n");
+                fclose(file);
+                exit(1);
+        }
+    }
+    fprintf(stdout, "Exported greyscale image\n");
+    fclose(file);
+}
+
+void bmpEncode(Bmp *bmp, const char *text) {
+    // TODO
 
 }
 
