@@ -158,7 +158,7 @@ Bmp *bmpReadFile(char *path) {
         fprintf(stdout, "Histogram calculation is supported only for 24-bit, uncompressed BMP files\n");
     } else {
         // Allocate memory for the rows
-        if ((bmp->pixelData = malloc((size_t) bmp->infoHeader->biHeight * sizeof **bmp->pixelData)) == NULL) {
+        if ((bmp->pixelData = malloc((size_t) bmp->infoHeader->biHeight * sizeof *bmp->pixelData)) == NULL) {
             ERROR("malloc\n");
             bmpDestroy(bmp);
             fclose(file);
@@ -171,15 +171,6 @@ Bmp *bmpReadFile(char *path) {
                 bmpDestroy(bmp);
                 fclose(file);
                 return NULL;
-            }
-            for (int32 j = 0; j < (int32) (bmp->infoHeader->biWidth + 31) * 4 / 32; j++) {
-                // Allocate memory for the pixels
-                if ((bmp->pixelData[i][j] = malloc(sizeof(Pixel))) == NULL) {
-                    ERROR("malloc\n");
-                    bmpDestroy(bmp);
-                    fclose(file);
-                    return NULL;
-                }
             }
         }
 
@@ -198,18 +189,14 @@ void bmpCreateGreyscale(const Bmp *bmpIn) {
 void bmpDestroy(Bmp *bmp) {
     if (!bmp)
         return;
-    if (!bmp->pixelData) {
-        for (int32 i = 0; i < bmp->infoHeader->biHeight; i++) {
-            for (int32 j = 0; j < (int32) (bmp->infoHeader->biWidth + 31) * 4 / 32; j++) {
-                free(bmp->pixelData[i][j]);
-            }
+    if (bmp->pixelData) {
+        for (int32 i = 0; i < bmp->infoHeader->biHeight; i++)
             free(bmp->pixelData[i]);
-        }
         free(bmp->pixelData);
     }
-    if (!bmp->infoHeader)
+    if (bmp->infoHeader)
         free(bmp->infoHeader);
-    if (!bmp->header)
+    if (bmp->header)
         free(bmp->header);
     free(bmp);
 }
