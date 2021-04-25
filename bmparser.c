@@ -114,23 +114,23 @@ Bmp *bmpCreate() {
 
 Bmp *bmpReadFile(char *path) {
     if (!path) {
-        ERROR("no such file\n");
+        ERROR("no path given\n");
         return NULL;
     }
     FILE *file;
     if ((file = fopen(path, "rb")) == NULL) {
-        ERROR("did not open file\n");
+        fprintf(stdout, "Did not open file %s\n", path);
         return NULL;
     }
 
     // Validate type
     if (fileReadUi8(file) != 'B') {
-        ERROR("Invalid file type\n");
+        fprintf(stdout, "File is not a BMP\n");
         fclose(file);
         return NULL;
     }
     if (fileReadUi8(file) != 'M') {
-        ERROR("Invalid file type\n");
+        fprintf(stdout, "File is not a BMP\n");
         fclose(file);
         return NULL;
     }
@@ -599,12 +599,18 @@ void bmpEncode(const char *path, const char *text) {
     int32 width = fileReadInt32(file);
     int32 height = fileReadInt32(file);
     size_t textLength = strlen(text);
+    if (textLength > 255) {
+        fprintf(stdout, "max encoded text size is 255 characters (the last one is for '\\0')\n");
+        fclose(file);
+        return;
+    }
     size_t bytesNeeded = (textLength + 1) * 8 * sizeof(char); // + 1 to compensate for '\0'
     size_t bytesAvailable = width * height * 3 * sizeof(uint8); // We don't use padding for encoding
-    size_t padding = (size_t) (ceil(floor((24 * width + 31) / 32) * 4)) - (width * 3);
-    // if (textLength > 255) {...} // I could do that, but it will probably work for even longer text
+    size_t padding = (size_t) (floor((24 * width + 31) / 32) * 4) - (width * 3);
     if (bytesNeeded > bytesAvailable) {
         fprintf(stdout, "The bmp is not large enough to encode the message\n");
+        fprintf(stdout, "bytesNeeded = %zu; bytesAvailable = %zu\n", bytesNeeded, bytesAvailable);
+        fclose(file);
         return;
     }
     // At this point, we are certain we can encode this message in the bmp
@@ -614,13 +620,13 @@ void bmpEncode(const char *path, const char *text) {
     size_t convIdx = 0;
     for (int textIdx = 0; textIdx < textLength; textIdx++) {
         for(int bit = 7; 0 <= bit; bit--) {
-            convertedText[convIdx] = (bool) (text[textIdx] >> bit) & 1;
+            convertedText[convIdx] = (bool) ((text[textIdx] >> bit) & 1);
             convIdx++;
         }
     }
     // Put '\0' at the end
     for(int bit = 7; 0 <= bit; bit--) {
-        convertedText[convIdx] = (bool) ('\0' >> bit) & 1;
+        convertedText[convIdx] = (bool) (('\0' >> bit) & 1);
         convIdx++;
     }
 
@@ -628,11 +634,11 @@ void bmpEncode(const char *path, const char *text) {
     fseek(file, offset, SEEK_SET);
     int32 lineIdx = 0;
     uint8 byte;
-    for (convIdx = 0; convIdx < textLength * 8; convIdx++) {
+    for (convIdx = 0; convIdx < (textLength + 1) * 8; convIdx++) {
         byte = fileReadUi8(file);
         fseek(file, -1, SEEK_CUR);
-        if ((byte >> 0) & 1 != convertedText[convIdx]) {
-            if ((byte >> 0) & 1 == 1) {
+        if (((byte >> 0) & 1) != convertedText[convIdx]) {
+            if (((byte >> 0) & 1) == 1) {
                 // There is 1, whereas we want to encode 0
                 byte--;
             } else {
@@ -665,8 +671,122 @@ void bmpEncode(const char *path, const char *text) {
                     fclose(file);
                     exit(1);
             }
+            lineIdx = 0;
         }
     }
+
+    fprintf(stdout, "Successfully encoded the message\n");
+    fclose(file);
+}
+
+void bmpDecode(const char *path) {
+    if (!path) {
+        ERROR("no path given\n");
+        return;
+    }
+    // Validate if supported
+    FILE *file;
+    if ((file = fopen(path, "rb+")) == NULL) {
+        fprintf(stdout, "did not open file %s\n", path);
+        return;
+    }
+    if (fileReadUi8(file) != 'B') {
+        fprintf(stdout, "file is not a bmp\n");
+        fclose(file);
+        return;
+    }
+    if (fileReadUi8(file) != 'M') {
+        fprintf(stdout, "file is not a bmp\n");
+        fclose(file);
+        return;
+    }
+    fseek(file, 28, SEEK_SET);
+    if (fileReadUi8(file) != 24) {
+        fprintf(stdout, "Steganography is supported only for 24-bit, uncompressed bmp files\n");
+        fclose(file);
+        return;
+    }
+    if (fileReadUi32(file) != 0) {
+        fprintf(stdout, "Steganography is supported only for 24-bit, uncompressed bmp files\n");
+        fclose(file);
+        return;
+    }
+
+    // Read/calculate all metadata needed to encode the text
+    fseek(file, 10, SEEK_SET);
+    int32 offset = fileReadUi32(file);
+    fseek(file, 18, SEEK_SET);
+    int32 width = fileReadInt32(file);
+    int32 height = fileReadInt32(file);
+    size_t padding = (size_t) (floor((24 * width + 31) / 32) * 4) - (width * 3);
+
+    // Read the encoded bits, decode and save to char array
+    fseek(file, offset, SEEK_SET);
+    bool charBin[8];
+    char message[256];
+    int16_t charConv = 0;
+    uint16 messIdx = 0;
+    int32 lineIdx = 0;
+    int32 heightIdx = 0;
+    while (messIdx < 256) {
+        for (short bit = 0; bit < 8; bit++) {
+            uint8 byte;
+            byte = fileReadUi8(file);
+            lineIdx++;
+            charBin[bit] = (bool) ((byte >> 0) & 1);
+            // Account for padding
+            if (lineIdx == width) {
+                switch (padding) {
+                    case 0:
+                        // No padding
+                        break;
+                    case 1:
+                        // 1 byte of padding
+                        fseek(file, 1, SEEK_CUR);
+                        break;
+                    case 2:
+                        // 2 bytes of padding
+                        fseek(file, 2, SEEK_CUR);
+                        break;
+                    case 3:
+                        // 3 bytes of padding
+                        fseek(file, 3, SEEK_CUR);
+                        break;
+                    default:
+                        ERROR("improper padding\n");
+                        fclose(file);
+                        exit(1);
+                }
+                lineIdx = 0;
+                heightIdx++;
+                if (heightIdx == height) {
+                    fprintf(stdout, "No message detected\n");
+                    fclose(file);
+                    return;
+                }
+            }
+        }
+        // Decrypt the char
+        charConv -= 128 * charBin[0];
+        charConv += 64 * charBin[1];
+        charConv += 32 * charBin[2];
+        charConv += 16 * charBin[3];
+        charConv += 8 * charBin[4];
+        charConv += 4 * charBin[5];
+        charConv += 2 * charBin[6];
+        charConv += charBin[7];
+        message[messIdx] = charConv;
+        if (charConv == '\0')
+            break;
+        charConv = 0;
+        messIdx++;
+    }
+    if (messIdx > 255) {
+        fprintf(stdout, "No message detected\n");
+        fclose(file);
+        return;
+    }
+    fprintf(stdout, "Decrypted message: \"%s\"\n", message);
 
     fclose(file);
 }

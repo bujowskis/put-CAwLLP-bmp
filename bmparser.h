@@ -112,8 +112,11 @@ void bmpCreateGreyscale(const Bmp *bmpIn, const char *path);
  */
 Bmp *bmpReadFile(char *path);
 
-/* Encodes given text in given bmp, gives the option to decrypt the message */
+/* Encodes given text in given bmp */
 void bmpEncode(const char *path, const char *text);
+
+/* Decodes text in given bmp */
+void bmpDecode(const char *path);
 
 /* Frees all the memory taken up by the struct Bmp */
 void bmpDestroy(Bmp *bmp);
