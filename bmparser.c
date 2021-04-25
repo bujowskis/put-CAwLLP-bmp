@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <math.h>
 #include <float.h>
+#include <string.h>
 #include "bmparser.h"
 
 // Simplified reading/writing
@@ -123,15 +124,12 @@ Bmp *bmpReadFile(char *path) {
     }
 
     // Validate type
-    uint8 byte1;
-    byte1 = fileReadUi8(file);
-    if (byte1 != 'B') {
+    if (fileReadUi8(file) != 'B') {
         ERROR("Invalid file type\n");
         fclose(file);
         return NULL;
     }
-    byte1 = fileReadUi8(file);
-    if (byte1 != 'M') {
+    if (fileReadUi8(file) != 'M') {
         ERROR("Invalid file type\n");
         fclose(file);
         return NULL;
@@ -556,9 +554,121 @@ void bmpCreateGreyscale(const Bmp *bmpIn, const char *path) {
     fclose(file);
 }
 
-void bmpEncode(Bmp *bmp, const char *text) {
-    // TODO
+void bmpEncode(const char *path, const char *text) {
+    if (!path) {
+        ERROR("no path given\n");
+        return;
+    }
+    if (!text) {
+        ERROR("no text given\n");
+        return;
+    }
 
+    // Validate if supported
+    FILE *file;
+    if ((file = fopen(path, "rb+")) == NULL) {
+        fprintf(stdout, "did not open file %s\n", path);
+        return;
+    }
+    if (fileReadUi8(file) != 'B') {
+        fprintf(stdout, "file is not a bmp\n");
+        fclose(file);
+        return;
+    }
+    if (fileReadUi8(file) != 'M') {
+        fprintf(stdout, "file is not a bmp\n");
+        fclose(file);
+        return;
+    }
+    fseek(file, 28, SEEK_SET);
+    if (fileReadUi8(file) != 24) {
+        fprintf(stdout, "Steganography is supported only for 24-bit, uncompressed bmp files\n");
+        fclose(file);
+        return;
+    }
+    if (fileReadUi32(file) != 0) {
+        fprintf(stdout, "Steganography is supported only for 24-bit, uncompressed bmp files\n");
+        fclose(file);
+        return;
+    }
+
+    // Read/calculate all metadata needed to encode the text
+    fseek(file, 10, SEEK_SET);
+    int32 offset = fileReadUi32(file);
+    fseek(file, 18, SEEK_SET);
+    int32 width = fileReadInt32(file);
+    int32 height = fileReadInt32(file);
+    size_t textLength = strlen(text);
+    size_t bytesNeeded = (textLength + 1) * 8 * sizeof(char); // + 1 to compensate for '\0'
+    size_t bytesAvailable = width * height * 3 * sizeof(uint8); // We don't use padding for encoding
+    size_t padding = (size_t) (ceil(floor((24 * width + 31) / 32) * 4)) - (width * 3);
+    // if (textLength > 255) {...} // I could do that, but it will probably work for even longer text
+    if (bytesNeeded > bytesAvailable) {
+        fprintf(stdout, "The bmp is not large enough to encode the message\n");
+        return;
+    }
+    // At this point, we are certain we can encode this message in the bmp
+
+    // Store each character bit by bit
+    bool convertedText[(textLength + 1) * 8];
+    size_t convIdx = 0;
+    for (int textIdx = 0; textIdx < textLength; textIdx++) {
+        for(int bit = 7; 0 <= bit; bit--) {
+            convertedText[convIdx] = (bool) (text[textIdx] >> bit) & 1;
+            convIdx++;
+        }
+    }
+    // Put '\0' at the end
+    for(int bit = 7; 0 <= bit; bit--) {
+        convertedText[convIdx] = (bool) ('\0' >> bit) & 1;
+        convIdx++;
+    }
+
+    // Alter data in the bmp to encode text
+    fseek(file, offset, SEEK_SET);
+    int32 lineIdx = 0;
+    uint8 byte;
+    for (convIdx = 0; convIdx < textLength * 8; convIdx++) {
+        byte = fileReadUi8(file);
+        fseek(file, -1, SEEK_CUR);
+        if ((byte >> 0) & 1 != convertedText[convIdx]) {
+            if ((byte >> 0) & 1 == 1) {
+                // There is 1, whereas we want to encode 0
+                byte--;
+            } else {
+                // There is 0, whereas we want to encode 1
+                byte++;
+            }
+        }
+        fileWriteUi8(file, byte);
+        lineIdx++;
+        // Account for padding
+        if (lineIdx == width) {
+            switch (padding) {
+                case 0:
+                    // No padding
+                    break;
+                case 1:
+                    // 1 byte of padding
+                    fseek(file, 1, SEEK_CUR);
+                    break;
+                case 2:
+                    // 2 bytes of padding
+                    fseek(file, 2, SEEK_CUR);
+                    break;
+                case 3:
+                    // 3 bytes of padding
+                    fseek(file, 3, SEEK_CUR);
+                    break;
+                default:
+                    ERROR("improper padding\n");
+                    fclose(file);
+                    exit(1);
+            }
+        }
+    }
+
+    fclose(file);
 }
 
 void bmpDestroy(Bmp *bmp) {

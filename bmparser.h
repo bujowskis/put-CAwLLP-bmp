@@ -7,6 +7,7 @@
 #include <stdbool.h>
 #include <math.h>
 #include <float.h>
+#include <string.h>
 
 #define UINT_8 1
 #define UINT_16 2
@@ -112,7 +113,7 @@ void bmpCreateGreyscale(const Bmp *bmpIn, const char *path);
 Bmp *bmpReadFile(char *path);
 
 /* Encodes given text in given bmp, gives the option to decrypt the message */
-void bmpEncode(Bmp *bmp, const char *text);
+void bmpEncode(const char *path, const char *text);
 
 /* Frees all the memory taken up by the struct Bmp */
 void bmpDestroy(Bmp *bmp);
